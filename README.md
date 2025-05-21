@@ -2,10 +2,10 @@
 A portfolio of analytical work for professional development
 
 ## tesla_tweets_analysis
-A text analysis of tweets related to Tesla's cybertruck scraped between 11/23/2021 and 12/03/2021. The objective was to extract insights about sentiment/attitudes towards the cybertruck while creating compelling visuals. **Language: R.**  
+A text analysis of tweets related to Tesla's cybertruck scraped between 11/23/2021 and 12/03/2021. The objective was to extract insights about sentiment/attitudes towards the cybertruck while creating compelling visuals. Sentiment analysis uncovered mixed public reaction to the rollout of the cybertruck: a combination of positive and negative emotions, as well as anticipation. **Language: R.**  
 
 ## london_sociodem
-Sociodemographic data exploration of official London city statistics, 2011-2021. **Language: SQL.** Check out my Tableau account for the associated data viz: https://public.tableau.com/app/profile/yulia.korableva
+Sociodemographic data exploration of official London city statistics, 2011-2021. Data visuals reveal where some of the most vulnerable socioeconomic subpopulations are concentrated in. **Language: SQL.** Check out my Tableau account for the associated data viz: https://public.tableau.com/app/profile/yulia.korableva
 
 ## netflix_shows
 Data exploration and cleaning of Netflix show [data sourced from kaggle](https://www.kaggle.com/datasets/titassaha/top-rated-tv-shows). **Language: SQL.** Check out my Tableau account for the data viz: https://public.tableau.com/app/profile/yulia.korableva
