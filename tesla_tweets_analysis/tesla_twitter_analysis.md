@@ -1,0 +1,269 @@
+Analysis of Twitter Tweets
+================
+Yulia
+12/9/2021
+
+## Analysis Objectives
+
+The purpose of this analysis is to find language/sentiment associated
+with Tesla’s cybertruck and create interesting visualizations.
+
+## Set Up Environment
+
+``` r
+library(rtweet)
+library(wordcloud)
+```
+
+    ## Loading required package: RColorBrewer
+
+``` r
+library(RColorBrewer)
+library(tidytext)
+library(SnowballC)
+library(stopwords)
+library(dplyr)
+```
+
+    ## 
+    ## Attaching package: 'dplyr'
+
+    ## The following objects are masked from 'package:stats':
+    ## 
+    ##     filter, lag
+
+    ## The following objects are masked from 'package:base':
+    ## 
+    ##     intersect, setdiff, setequal, union
+
+``` r
+library(tidyr)
+library(ggplot2)
+```
+
+``` r
+# consumer_key <- ""
+# consumer_secret <- ""
+# access_token <- ""
+# access_secret <- ""    
+# 
+# 
+# token <- create_token(
+#   app = "",
+#   consumer_key = consumer_key,
+#   consumer_secret = consumer_secret,
+#   access_token = access_token,
+#   access_secret = access_secret)
+# 
+# token
+# 
+# tesla_terms = search_tweets(q="cybertruck OR CyberTruck OR Cybertruck",
+#                             n = 10000,
+#                             since="2021-11-23",
+#                             until="2021-12-03",
+#                             #retryonratelimit = TRUE,
+#                             token=token,
+#                             lang="en",
+#                             geocode = lookup_coords("usa"))
+
+# note: there were only 1,859 tweets
+# we would need to go further back in time to get more tweets,
+# which isn't available with the free version of the Twitter API
+```
+
+## Sentiment Analysis
+
+``` r
+tesla_terms <- read.csv("D:/Coding Stuff/R Projects/twitter_tesla/twitter_data/tesla_tweets_11232021_12032021.csv")
+
+# cleaning up the tweets
+
+# remove links in tweet
+tesla_terms$clean_text <- gsub("http\\S+", "", tesla_terms$text)
+
+# remove @ calls in tweet
+tesla_terms$clean_text <- gsub("@\\w+", "", tesla_terms$clean_text)
+
+# remove hashtags in tweet
+tesla_terms$clean_text <- gsub("#[A-Za-z0-9_]+", "", tesla_terms$clean_text)
+
+# remove &amp and replace it with symbol
+tesla_terms$clean_text <- gsub("\\&amp;", "", tesla_terms$clean_text)
+
+# put an empty space between hyphenated words, like Hi-Performance
+# get rid of weird hyphenated combinations like 2-k
+tesla_terms$clean_text <- gsub("[[:digit:]]\\-[[:alnum:]]+", "", tesla_terms$clean_text)
+tesla_terms$clean_text <- gsub("\\-", " ", tesla_terms$clean_text)
+
+# remove letters and numbers squished together like 740hp and 50mi
+tesla_terms$clean_text  <- gsub("[0-9][0-9]+[a-z]+", "", tesla_terms$clean_text)
+
+# remove punctuation
+#tesla_terms$clean_text <- gsub("[[:punct:]]+", "", tesla_terms$clean_text)
+
+# remove digits
+tesla_terms$clean_text <- gsub("[[:digit:]]+", "", tesla_terms$clean_text)
+
+# remove trailing and leading white spaces
+tesla_terms$clean_text <- gsub("^[[:space:]]*","", tesla_terms$clean_text)
+tesla_terms$clean_text <- gsub("[[:space:]]*$","", tesla_terms$clean_text)
+tesla_terms$clean_text <- gsub(" +"," ", tesla_terms$clean_text)
+
+# remove punctuation
+tesla_terms$clean_text <- stringr::str_replace_all(tesla_terms$clean_text, "[[:punct:]]", "")
+
+# create variable for post number, for easier tracking
+tesla_terms$post <-seq(nrow(tesla_terms))
+```
+
+``` r
+# more text cleaning, including filtering out stopwords 
+
+custom_word <- c(stop_words$word, "your", "cybertruck", "cyberwhistle", "cyberquad", "elon", "musk", "looks", "model",
+                 "one", "next", "just", "ɖ", "awd", "can", "i’m", "it’s", "next", "tsla", "im", "rwd", "wheel", "teslas",
+                 "product", "can’t", "tri", "tesla", "truck", "pre", "motor", "i’ll", "ill", "i’d", "whistle", "car", "telsa")
+
+# filter out stopwords
+tesla_words <-  tesla_terms %>%
+  unnest_tokens(word, clean_text) %>%
+  filter(!(word %in% custom_word))
+```
+
+``` r
+# standardizing most common word forms
+
+word_fix_list <- c("wait", "driv", "stop", "borrow", "bought", "hint", "launch", "make", "increas", "sell", "pay", "build", "million", "announc", "big", "think", "lov", "cost", "sold", "success", "ugl", "fast", "cheap", "brand", "impact", "split", "tech", "power", "batter", "suggest", "lmao", "lol", "stock", "steer")
+  
+word_fix_replacement <- c("wait", "drive", "stop", "borrow", "buy", "hint", "launch", "make", "increase", "sell", "pay", "build", "million", "announce", "big", "think", "love", "cost", "sell", "success", "ugly", "fast", "cheap", "brand", "impact", "split", "tech", "power", "battery", "suggest", "lol", "lol", "stock", "steer")
+  
+  for(i in 1:length(word_fix_list)){
+    tesla_words$word[grepl(word_fix_list[i], tesla_words$word, ignore.case=FALSE)] <- word_fix_replacement[i]
+  }
+```
+
+``` r
+# create a wordcloud
+
+ ## generate a wordcloud for quick visualization
+  word_counts <- tesla_words %>% 
+    count(word) 
+  
+  
+  pal <- brewer.pal(7, "BuGn")
+  
+  set.seed(1234)
+  
+  setwd("D:/Coding Stuff/R Projects/twitter_tesla")
+  png("tesla_wordcloud.png")
+  wordcloud(
+    words = word_counts$word, 
+    freq = word_counts$n, 
+    max.words = 50, 
+    colors = pal
+  )
+    
+  dev.off()
+```
+
+    ## png 
+    ##   2
+
+``` r
+# sentiment analysis using NRC dictionary
+
+nrc_sentiment <- tidytext::get_sentiments("nrc")
+  
+  # join sentiment dictionary to tweet data
+  tesla_sentiment <- inner_join(tesla_words, nrc_sentiment, by="word")
+  
+  # clean up columns for easier analysis, we don't need all of them
+  tesla_sentiment <- tesla_sentiment %>% select(user_id, status_id, post, screen_name, location, favorite_count, followers_count, text, word, sentiment)
+                                              
+  # restructure data from long to wide
+  tesla_sentiment_count <- count(tesla_sentiment, post, sentiment)
+  
+  tesla_sentiment_count <- spread(key=sentiment, value=n, fill=0, data=tesla_sentiment_count)
+  
+  # calculate sentiment score
+  tesla_sentiment_count <- tesla_sentiment_count %>%
+    mutate(score = positive - negative)
+  
+  head(tesla_sentiment_count)
+```
+
+    ##   post anger anticipation disgust fear joy negative positive sadness surprise
+    ## 1    2     0            1       0    0   0        0        1       0        0
+    ## 2    3     0            1       0    0   0        0        1       0        0
+    ## 3    4     0            0       0    0   0        0        1       0        0
+    ## 4    5     0            0       0    0   0        0        3       0        0
+    ## 5    6     0            1       0    0   0        0        1       0        0
+    ## 6    7     0            1       0    0   1        0        1       0        0
+    ##   trust score
+    ## 1     0     1
+    ## 2     0     1
+    ## 3     0     1
+    ## 4     2     3
+    ## 5     0     1
+    ## 6     1     1
+
+``` r
+  mean(tesla_sentiment_count$score)
+```
+
+    ## [1] 0.4600172
+
+``` r
+  # 0.46, pretty neutral
+```
+
+``` r
+ # data viz: count of words by sentiment
+  tesla_sentiment_sum <- tesla_sentiment %>% count(sentiment) %>% arrange(desc(n)) %>%
+    rename(count_n=n)
+  
+  bar1 <- ggplot(tesla_sentiment_sum, aes(x=reorder(sentiment, -count_n), y=count_n, data=)) +
+    geom_bar(stat="identity", fill="#3489eb") + labs(y="Word Count", x="Sentiment") +
+    ggtitle("Sentiment Word Count in Tweets, Nov 24-Dec 3")
+  
+  # styling
+  simple_theme <- theme(
+    panel.grid.major=element_blank(),
+    panel.grid.minor=element_blank(),
+    panel.background=element_blank(),
+    axis.line = element_line(color="black"),
+    axis.title=element_text(size=16),
+    axis.text.x=element_text(size=14),
+    axis.text.y=element_text(size=14),
+    plot.title=element_text(size=20, hjust=0.5),
+  )
+  
+  bar1 + simple_theme
+```
+
+![](tesla_twitter_analysis_files/figure-gfm/unnamed-chunk-8-1.png)<!-- -->
+
+``` r
+  ggsave("tesla_sentiment_word_count.png",
+         width=30, height=15, units="cm")
+```
+
+``` r
+ tweets_by_day <- tesla_terms %>% mutate(date = as.Date(created_at)) %>%
+    group_by(date) %>% tally() %>% rename(num_tweets = n)
+  
+  
+  # line graph of number of tweets over time
+  line1 <- ggplot(tweets_by_day, aes(x=date, y=num_tweets)) +
+    geom_area(stat="identity", fill="#3489eb", color="#000034", size=1) +
+    labs(x="", y="Number of Tweets") + ggtitle("Number of Tweets by Date") +
+    annotate("text", x=as.Date("2021-12-02"), y=487, label="473", size=8)
+  
+  line1 + simple_theme
+```
+
+![](tesla_twitter_analysis_files/figure-gfm/unnamed-chunk-9-1.png)<!-- -->
+
+``` r
+  ggsave("tesla_tweets_by_day.png",
+         width=30, height=15, units="cm")
+```
